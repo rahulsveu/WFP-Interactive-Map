@@ -3,37 +3,143 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MA Development Field Projects Map</title>
+    <title>Field Research Interactive Map</title>
+    
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    
     <style>
-        body { font-family: 'Inter', -apple-system, sans-serif; margin: 0; display: flex; flex-direction: column; height: 100vh; background-color: #f8fafc; }
-        #header { background: #1e293b; color: white; padding: 1rem; text-align: center; box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1); }
-        #controls { padding: 0.75rem; background: #f1f5f9; display: flex; gap: 15px; justify-content: center; border-bottom: 1px solid #cbd5e1; flex-wrap: wrap; }
-        #main { display: flex; flex: 1; overflow: hidden; }
-        #map { flex: 2; height: 100%; }
-        #info-tab { flex: 1; padding: 2rem; border-left: 1px solid #e2e8f0; overflow-y: auto; background: white; display: none; }
-        select { padding: 0.5rem; border-radius: 6px; border: 1px solid #94a3b8; background: white; font-size: 0.9rem; min-width: 200px; }
-        .label { font-weight: 700; color: #64748b; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em; display: block; margin-top: 1.5rem; }
-        .val { color: #1e293b; line-height: 1.6; margin: 0.25rem 0 0 0; }
-        .project-img { width: 100%; border-radius: 8px; margin-top: 1rem; border: 1px solid #e2e8f0; }
-        h2 { color: #0f172a; margin-top: 0; border-bottom: 2px solid #3b82f6; padding-bottom: 0.5rem; }
-        .reset-btn { padding: 0.5rem 1rem; background: #ef4444; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: 600; }
+        :root {
+            --primary: #1e293b;
+            --secondary: #3b82f6;
+            --bg: #f8fafc;
+            --text: #334155;
+        }
+
+        body { 
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+            margin: 0; 
+            display: flex; 
+            flex-direction: column; 
+            height: 100vh; 
+            background-color: var(--bg);
+            color: var(--text);
+        }
+
+        #header { 
+            background: var(--primary); 
+            color: white; 
+            padding: 1rem; 
+            text-align: center; 
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        #controls { 
+            padding: 1rem; 
+            background: #ffffff; 
+            display: flex; 
+            gap: 12px; 
+            justify-content: center; 
+            border-bottom: 1px solid #e2e8f0;
+            flex-wrap: wrap;
+        }
+
+        #main-layout { 
+            display: flex; 
+            flex: 1; 
+            overflow: hidden; 
+        }
+
+        #map { 
+            flex: 2; 
+            height: 100%; 
+            z-index: 1;
+        }
+
+        #info-panel { 
+            flex: 1; 
+            padding: 2rem; 
+            border-left: 1px solid #e2e8f0; 
+            overflow-y: auto; 
+            background: white; 
+            display: none; 
+        }
+
+        select { 
+            padding: 0.6rem; 
+            border-radius: 6px; 
+            border: 1px solid #cbd5e1; 
+            min-width: 180px; 
+            font-size: 0.9rem;
+        }
+
+        .reset-btn { 
+            padding: 0.6rem 1.2rem; 
+            background: #ef4444; 
+            color: white; 
+            border: none; 
+            border-radius: 6px; 
+            cursor: pointer; 
+            font-weight: 600;
+        }
+
+        .label { 
+            font-weight: 700; 
+            color: #64748b; 
+            font-size: 0.75rem; 
+            text-transform: uppercase; 
+            display: block; 
+            margin-top: 1.5rem; 
+        }
+
+        .value { 
+            margin: 0.25rem 0 0 0; 
+            line-height: 1.6; 
+        }
+
+        .project-img { 
+            width: 100%; 
+            border-radius: 8px; 
+            margin-top: 1rem; 
+            border: 1px solid #f1f5f9; 
+        }
+
+        .img-caption { 
+            font-size: 0.85rem; 
+            font-style: italic; 
+            color: #64748b; 
+            margin-top: 0.5rem; 
+            text-align: center;
+        }
+
+        h2 { 
+            color: var(--primary); 
+            margin-top: 0; 
+            border-bottom: 3px solid var(--secondary); 
+            padding-bottom: 0.5rem; 
+        }
+
+        @media (max-width: 768px) {
+            #main-layout { flex-direction: column; }
+            #info-panel { flex: none; height: 45%; border-left: none; border-top: 1px solid #e2e8f0; }
+        }
     </style>
 </head>
 <body>
 
-<div id="header"><h1>MA Development Field Projects</h1></div>
-
-<div id="controls">
-    <select id="stateFilter"><option value="">All States</option></select>
-    <select id="themeFilter"><option value="">All Thematic Areas</option></select>
-    <button class="reset-btn" onclick="resetFilters()">Reset</button>
+<div id="header">
+    <h1 style="margin:0; font-size: 1.5rem;">Interactive Research Map</h1>
 </div>
 
-<div id="main">
+<div id="controls">
+    <select id="stateSelect"><option value="">All States</option></select>
+    <select id="themeSelect"><option value="">All Thematic Areas</option></select>
+    <button class="reset-btn" onclick="resetMap()">Reset Filters</button>
+</div>
+
+<div id="main-layout">
     <div id="map"></div>
-    <div id="info-tab">
-        <div id="info-content"></div>
+    <div id="info-panel">
+        <div id="project-details"></div>
     </div>
 </div>
 
@@ -41,71 +147,72 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"></script>
 
 <script>
-    const csvUrl = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vSF12V5ASrhO7_ASqHC8tsb9HzY_Jxd-8yvJFh274fctI-x-3qnIA8BQaJhMlQYuFQxqIhcxs-2m7zH/pub?output=csv';
+    // 1. UPDATE THIS URL WITH YOUR PUBLISHED CSV LINK
+    const csvSource = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vSF12V5ASrhO7_ASqHC8tsb9HzY_Jxd-8yvJFh274fctI-x-3qnIA8BQaJhMlQYuFQxqIhcxs-2m7zH/pub?output=csv';
 
     const map = L.map('map').setView([22.9734, 78.6569], 5);
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
         attribution: '© OpenStreetMap'
     }).addTo(map);
 
-    let allData = [];
-    let markers = L.layerGroup().addTo(map);
+    let masterData = [];
+    let markerLayer = L.layerGroup().addTo(map);
 
-    Papa.parse(csvUrl, {
-        download: true, header: true,
+    // Load and Process Data
+    Papa.parse(csvSource, {
+        download: true,
+        header: true,
         complete: function(results) {
-            allData = results.data.filter(r => r.Latitude && r.Longitude);
-            populateFilters(allData);
-            displayPoints(allData);
+            masterData = results.data.filter(row => row.Latitude && row.Longitude);
+            initializeFilters(masterData);
+            renderMarkers(masterData);
         }
     });
 
-    function displayPoints(data) {
-        markers.clearLayers();
+    function renderMarkers(data) {
+        markerLayer.clearLayers();
         data.forEach(row => {
-            const marker = L.marker([row.Latitude, row.Longitude]).addTo(markers);
-            marker.on('click', () => {
-                const infoTab = document.getElementById('info-tab');
-                infoTab.style.display = 'block';
-                const fixImg = (url) => url ? url.replace('open?id=', 'uc?export=view&id=') : '';
-                document.getElementById('info-content').innerHTML = `
-                    <h2>${row.Title}</h2>
-                    <span class="label">Researcher</span><p class="val">${row.Name}</p>
-                    <span class="label">State</span><p class="val">${row.State}</p>
-                    <span class="label">Thematic Area</span><p class="val">${row['Thematic Area']}</p>
-                    <span class="label">Project Summary</span><p class="val">${row['Abstract/Summary']}</p>
-                    <span class="label">Keywords</span><p class="val">${row['Keywords']}</p>
-                    ${row['Snippet 1'] ? `<img class="project-img" src="${fixImg(row['Snippet 1'])}"><p style="font-size:0.8rem; font-style:italic; color:#64748b; margin-top:5px;">${row['Caption 1'] || ''}</p>` : ''}
-                    ${row['Snippet 2'] ? `<img class="project-img" src="${fixImg(row['Snippet 2'])}"><p style="font-size:0.8rem; font-style:italic; color:#64748b; margin-top:5px;">${row['Caption 2'] || ''}</p>` : ''}
-                `;
-            });
+            const marker = L.marker([parseFloat(row.Latitude), parseFloat(row.Longitude)]).addTo(markerLayer);
+            marker.on('click', () => displayInfo(row));
         });
     }
 
-    function populateFilters(data) {
-        const states = [...new Set(data.map(r => r.State))].sort();
-        const themes = [...new Set(data.map(r => r['Thematic Area']))].sort();
-        const sFilter = document.getElementById('stateFilter');
-        const tFilter = document.getElementById('themeFilter');
-        states.forEach(s => { if(s) sFilter.innerHTML += `<option value="${s}">${s}</option>`; });
-        themes.forEach(t => { if(t) tFilter.innerHTML += `<option value="${t}">${t}</option>`; });
-        sFilter.onchange = filter; tFilter.onchange = filter;
+    function displayInfo(row) {
+        const panel = document.getElementById('info-panel');
+        const content = document.getElementById('project-details');
+        panel.style.display = 'block';
+
+        // Helper to convert Drive links to displayable images
+        const formatImg = (link) => link ? link.replace('open?id=', 'uc?export=view&id=') : '';
+
+        content.innerHTML = `
+            <h2>${row.Title || 'Untitled Project'}</h2>
+            
+            <span class="label">Researcher</span>
+            <p class="value">${row.Name || 'N/A'}</p>
+
+            <span class="label">State / Location</span>
+            <p class="value">${row.State || ''} — ${row.Location || ''}</p>
+
+            <span class="label">Thematic Area</span>
+            <p class="value">${row['Thematic Area'] || 'General'}</p>
+
+            <span class="label">Abstract</span>
+            <p class="value">${row['Abstract/Summary'] || ''}</p>
+
+            ${row['Snippet 1'] ? `
+                <img class="project-img" src="${formatImg(row['Snippet 1'])}" onerror="this.style.display='none'">
+                <p class="img-caption">${row['Caption 1'] || ''}</p>
+            ` : ''}
+
+            ${row['Snippet 2'] ? `
+                <img class="project-img" src="${formatImg(row['Snippet 2'])}" onerror="this.style.display='none'">
+                <p class="img-caption">${row['Caption 2'] || ''}</p>
+            ` : ''}
+        `;
+        panel.scrollTop = 0;
     }
 
-    function filter() {
-        const s = document.getElementById('stateFilter').value;
-        const t = document.getElementById('themeFilter').value;
-        const filtered = allData.filter(r => (s === '' || r.State === s) && (t === '' || r['Thematic Area'] === t));
-        displayPoints(filtered);
-    }
-
-    function resetFilters() {
-        document.getElementById('stateFilter').value = '';
-        document.getElementById('themeFilter').value = '';
-        displayPoints(allData);
-        document.getElementById('info-tab').style.display = 'none';
-        map.setView([22.9734, 78.6569], 5);
-    }
-</script>
-</body>
-</html>
+    function initializeFilters(data) {
+        const states = [...new Set(data.map(r => r.State))].filter(Boolean).sort();
+        const themes = [...new Set(data.map(r => r['Thematic Area']))].filter
