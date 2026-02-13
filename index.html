@@ -1,218 +1,114 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-    <meta charset="UTF-8">
+    <title>WFP Interactive Map</title>
+    <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Field Research Interactive Map</title>
-    
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-    
     <style>
-        :root {
-            --primary: #1e293b;
-            --secondary: #3b82f6;
-            --bg: #f8fafc;
-            --text: #334155;
-        }
-
-        body { 
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
-            margin: 0; 
-            display: flex; 
-            flex-direction: column; 
-            height: 100vh; 
-            background-color: var(--bg);
-            color: var(--text);
-        }
-
-        #header { 
-            background: var(--primary); 
-            color: white; 
-            padding: 1rem; 
-            text-align: center; 
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-        }
-
-        #controls { 
-            padding: 1rem; 
-            background: #ffffff; 
-            display: flex; 
-            gap: 12px; 
-            justify-content: center; 
-            border-bottom: 1px solid #e2e8f0;
-            flex-wrap: wrap;
-        }
-
-        #main-layout { 
-            display: flex; 
-            flex: 1; 
-            overflow: hidden; 
-        }
-
-        #map { 
-            flex: 2; 
-            height: 100%; 
-            z-index: 1;
-        }
-
-        #info-panel { 
-            flex: 1; 
-            padding: 2rem; 
-            border-left: 1px solid #e2e8f0; 
-            overflow-y: auto; 
-            background: white; 
-            display: none; 
-        }
-
-        select { 
-            padding: 0.6rem; 
-            border-radius: 6px; 
-            border: 1px solid #cbd5e1; 
-            min-width: 180px; 
-            font-size: 0.9rem;
-        }
-
-        .reset-btn { 
-            padding: 0.6rem 1.2rem; 
-            background: #ef4444; 
-            color: white; 
-            border: none; 
-            border-radius: 6px; 
-            cursor: pointer; 
-            font-weight: 600;
-        }
-
-        .label { 
-            font-weight: 700; 
-            color: #64748b; 
-            font-size: 0.75rem; 
-            text-transform: uppercase; 
-            display: block; 
-            margin-top: 1.5rem; 
-        }
-
-        .value { 
-            margin: 0.25rem 0 0 0; 
-            line-height: 1.6; 
-        }
-
-        .project-img { 
-            width: 100%; 
-            border-radius: 8px; 
-            margin-top: 1rem; 
-            border: 1px solid #f1f5f9; 
-        }
-
-        .img-caption { 
-            font-size: 0.85rem; 
-            font-style: italic; 
-            color: #64748b; 
-            margin-top: 0.5rem; 
-            text-align: center;
-        }
-
-        h2 { 
-            color: var(--primary); 
-            margin-top: 0; 
-            border-bottom: 3px solid var(--secondary); 
-            padding-bottom: 0.5rem; 
-        }
-
-        @media (max-width: 768px) {
-            #main-layout { flex-direction: column; }
-            #info-panel { flex: none; height: 45%; border-left: none; border-top: 1px solid #e2e8f0; }
-        }
+        body { margin: 0; padding: 0; font-family: sans-serif; display: flex; flex-direction: column; height: 100vh; }
+        #header { background: #1e293b; color: white; padding: 10px; text-align: center; }
+        #controls { background: #f1f5f9; padding: 10px; display: flex; gap: 10px; justify-content: center; border-bottom: 1px solid #ccc; }
+        #container { display: flex; flex: 1; overflow: hidden; }
+        #map { flex: 2; background: #e5e7eb; } /* Grey background if map fails to load tiles */
+        #info-panel { flex: 1; padding: 20px; border-left: 1px solid #ccc; overflow-y: auto; display: none; background: white; }
+        .project-img { width: 100%; border-radius: 5px; margin-top: 10px; }
+        select { padding: 5px; border-radius: 4px; border: 1px solid #999; }
     </style>
 </head>
 <body>
 
-<div id="header">
-    <h1 style="margin:0; font-size: 1.5rem;">Interactive Research Map</h1>
-</div>
-
+<div id="header"><h3>MA Development Field Research Map</h3></div>
 <div id="controls">
-    <select id="stateSelect"><option value="">All States</option></select>
-    <select id="themeSelect"><option value="">All Thematic Areas</option></select>
-    <button class="reset-btn" onclick="resetMap()">Reset Filters</button>
+    <select id="stateFilter"><option value="">All States</option></select>
+    <select id="themeFilter"><option value="">All Thematic Areas</option></select>
+    <button onclick="location.reload()">Reset Map</button>
 </div>
-
-<div id="main-layout">
+<div id="container">
     <div id="map"></div>
-    <div id="info-panel">
-        <div id="project-details"></div>
-    </div>
+    <div id="info-panel"></div>
 </div>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"></script>
 
 <script>
-    // 1. UPDATE THIS URL WITH YOUR PUBLISHED CSV LINK
-    const csvSource = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vSF12V5ASrhO7_ASqHC8tsb9HzY_Jxd-8yvJFh274fctI-x-3qnIA8BQaJhMlQYuFQxqIhcxs-2m7zH/pub?output=csv';
+    // Replace the link below!
+    const sheetUrl = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vSF12V5ASrhO7_ASqHC8tsb9HzY_Jxd-8yvJFh274fctI-x-3qnIA8BQaJhMlQYuFQxqIhcxs-2m7zH/pub?output=csv';
 
-    const map = L.map('map').setView([22.9734, 78.6569], 5);
+    // Initialize Map
+    const map = L.map('map').setView([22.97, 78.65], 5);
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
         attribution: '© OpenStreetMap'
     }).addTo(map);
 
-    let masterData = [];
-    let markerLayer = L.layerGroup().addTo(map);
+    let allData = [];
+    let markers = L.layerGroup().addTo(map);
 
-    // Load and Process Data
-    Papa.parse(csvSource, {
+    // Fetch and Parse Data
+    Papa.parse(sheetUrl, {
         download: true,
         header: true,
+        skipEmptyLines: true,
         complete: function(results) {
-            masterData = results.data.filter(row => row.Latitude && row.Longitude);
-            initializeFilters(masterData);
-            renderMarkers(masterData);
+            console.log("Data loaded:", results.data); // Debugging check
+            allData = results.data.filter(r => r.Latitude && r.Longitude);
+            
+            if (allData.length === 0) {
+                alert("Data loaded but no valid coordinates found. Check your Latitude/Longitude columns.");
+            }
+
+            setupFilters(allData);
+            plotMarkers(allData);
+        },
+        error: function(err) {
+            alert("Error loading Google Sheet. Make sure it is 'Published to the Web' as a CSV.");
         }
     });
 
-    function renderMarkers(data) {
-        markerLayer.clearLayers();
+    function plotMarkers(data) {
+        markers.clearLayers();
         data.forEach(row => {
-            const marker = L.marker([parseFloat(row.Latitude), parseFloat(row.Longitude)]).addTo(markerLayer);
-            marker.on('click', () => displayInfo(row));
+            const m = L.marker([parseFloat(row.Latitude), parseFloat(row.Longitude)]);
+            m.addTo(markers);
+            m.on('click', () => {
+                const panel = document.getElementById('info-panel');
+                panel.style.display = 'block';
+                const fixDriveUrl = (url) => url ? url.replace('open?id=', 'uc?export=view&id=') : '';
+                
+                panel.innerHTML = `
+                    <h2>${row.Title || 'Project'}</h2>
+                    <p><strong>Researcher:</strong> ${row.Name || 'N/A'}</p>
+                    <p><strong>State:</strong> ${row.State || 'N/A'}</p>
+                    <p><strong>Theme:</strong> ${row['Thematic Area'] || 'N/A'}</p>
+                    <hr>
+                    <p>${row['Abstract/Summary'] || ''}</p>
+                    ${row['Snippet 1'] ? `<img class="project-img" src="${fixDriveUrl(row['Snippet 1'])}"><p><em>${row['Caption 1'] || ''}</em></p>` : ''}
+                `;
+            });
         });
     }
 
-    function displayInfo(row) {
-        const panel = document.getElementById('info-panel');
-        const content = document.getElementById('project-details');
-        panel.style.display = 'block';
+    function setupFilters(data) {
+        const states = [...new Set(data.map(r => r.State))].filter(Boolean).sort();
+        const themes = [...new Set(data.map(r => r['Thematic Area']))].filter(Boolean).sort();
+        
+        const sSelect = document.getElementById('stateFilter');
+        const tSelect = document.getElementById('themeFilter');
 
-        // Helper to convert Drive links to displayable images
-        const formatImg = (link) => link ? link.replace('open?id=', 'uc?export=view&id=') : '';
+        states.forEach(s => sSelect.innerHTML += `<option value="${s}">${s}</option>`);
+        themes.forEach(t => tSelect.innerHTML += `<option value="${t}">${t}</option>`);
 
-        content.innerHTML = `
-            <h2>${row.Title || 'Untitled Project'}</h2>
-            
-            <span class="label">Researcher</span>
-            <p class="value">${row.Name || 'N/A'}</p>
-
-            <span class="label">State / Location</span>
-            <p class="value">${row.State || ''} — ${row.Location || ''}</p>
-
-            <span class="label">Thematic Area</span>
-            <p class="value">${row['Thematic Area'] || 'General'}</p>
-
-            <span class="label">Abstract</span>
-            <p class="value">${row['Abstract/Summary'] || ''}</p>
-
-            ${row['Snippet 1'] ? `
-                <img class="project-img" src="${formatImg(row['Snippet 1'])}" onerror="this.style.display='none'">
-                <p class="img-caption">${row['Caption 1'] || ''}</p>
-            ` : ''}
-
-            ${row['Snippet 2'] ? `
-                <img class="project-img" src="${formatImg(row['Snippet 2'])}" onerror="this.style.display='none'">
-                <p class="img-caption">${row['Caption 2'] || ''}</p>
-            ` : ''}
-        `;
-        panel.scrollTop = 0;
+        sSelect.onchange = applyFilters;
+        tSelect.onchange = applyFilters;
     }
 
-    function initializeFilters(data) {
-        const states = [...new Set(data.map(r => r.State))].filter(Boolean).sort();
-        const themes = [...new Set(data.map(r => r['Thematic Area']))].filter
+    function applyFilters() {
+        const s = document.getElementById('stateFilter').value;
+        const t = document.getElementById('themeFilter').value;
+        const filtered = allData.filter(r => (s === '' || r.State === s) && (t === '' || r['Thematic Area'] === t));
+        plotMarkers(filtered);
+    }
+</script>
+</body>
+</html>
