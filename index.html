@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>India Interactive Project Map</title>
+    
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 0; display: flex; flex-direction: column; height: 100vh; background-color: #f4f7f6; }
+        #header { background: #2c3e50; color: white; padding: 15px 20px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+        #controls { display: flex; gap: 15px; padding: 10px 20px; background: #ecf0f1; border-bottom: 1px solid #bdc3c7; }
+        #main-container { display: flex; flex: 1; overflow: hidden; }
+        #map { flex: 2; height: 100%; z-index: 1; }
+        #info-tab { flex: 1; background: white; border-left: 2px solid #bdc3c7; overflow-y: auto; padding: 25px; display: none; box-shadow: -2px 0 10px rgba(0,0,0,0.05); }
+        
+        select { padding: 8px; border-radius: 5px; border: 1px solid #ccc; min-width: 150px; font-size: 14px; }
+        h1 { margin: 0; font-size: 20px; }
+        h2 { color: #2c3e50; margin-top: 0; }
+        .data-label { font-weight: bold; color: #7f8c8d; text-transform: uppercase; font-size: 11px; margin-top: 15px; display: block; }
+        .data-value { display: block; margin-bottom: 10px; line-height: 1.5; color: #34495e; }
+        .project-image { width: 100%; border-radius: 8px; margin-top: 15px; border: 1px solid #eee; }
+        .caption { font-style: italic; font-size: 13px; color: #636e72; margin-top: 5px; text-align: center; margin-bottom: 20px; }
+        .placeholder-text { color: #95a5a6; text-align: center; margin-top: 50px; }
+        .reset-btn { padding: 8px 15px; border-radius: 5px; background: #e74c3c; color: white; border: none; cursor: pointer; }
+    </style>
+</head>
+<body>
+
+<div id="header">
+    <h1>Interactive Project Map: India</h1>
+</div>
+
+<div id="controls">
+    <select id="stateFilter"><option value="">All States</option></select>
+    <select id="themeFilter"><option value="">All Themes</option></select>
+    <button class="reset-btn" onclick="resetFilters()">Reset Map</button>
+</div>
+
+<div id="main-container">
+    <div id="map"></div>
+    <div id="info-tab">
+        <div id="info-content">
+            <p class="placeholder-text">Click a point on the map to see project details.</p>
+        </div>
+    </div>
+</div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"></script>
+
+<script>
+    // 1. YOUR GOOGLE SHEET CSV LINK
+    const googleSheetCsvUrl = 'PASTE_YOUR_CSV_LINK_HERE';
+
+    // Map Setup
+    const map = L.map('map').setView([22.9734, 78.6569], 5);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '© OpenStreetMap contributors'
+    }).addTo(map);
+
+    let allData = [];
+    let markersLayer = L.layerGroup().addTo(map);
+
+    // Load Data
+    Papa.parse(googleSheetCsvUrl, {
+        download: true,
+        header: true,
+        complete: function(results) {
+            allData = results.data.filter(row => row.Latitude && row.Longitude);
+            
+            // Clean up the data for filtering
+            allData.forEach(row => {
+                // Extract State from "Pune, Maharashtra" format
+                const locationParts = row['Field Location'] ? row['Field Location'].split(',') : [];
+                row._derivedState = locationParts.length > 0 ? locationParts[locationParts.length - 1].trim() : 'Other';
+                row._theme = row['Thematic Area (described in 3-4 Words)\nOne Thematic Area only'] || 'General';
+            });
+
+            initFilters();
+            renderMap(allData);
+        }
+    });
+
+    function renderMap(data) {
+        markersLayer.clearLayers();
+        data.forEach(row => {
+            const marker = L.marker([parseFloat(row.Latitude), parseFloat(row.Longitude)]).addTo(markersLayer);
+            marker.on('click', () => showDetails(row));
+        });
+    }
+
+    function showDetails(row) {
+        const infoTab = document.getElementById('info-tab');
+        const content = document.getElementById('info-content');
+        infoTab.style.display = 'block';
+
+        // Convert Google Drive links to direct images
+        const fixImg = (url) => url ? url.replace('open?id=', 'uc?export=view&id=') : '';
+
+        content.innerHTML = `
+            <h2>${row['Title of your Project']}</h2>
+            
+            <span class="data-label">Researcher</span>
+            <span class="data-value">${row['Your Name']}</span>
+
+            <span class="data-label">Location</span>
+            <span class="data-value">${row['Field Location']}</span>
+
+            <span class="data-label">Theme</span>
+            <span class="data-value">${row._theme}</span>
+
+            <span class="data-label">Summary</span>
+            <span class="data-value">${row['Short Summary of the Project (50-100 Words)']}</span>
+
+            ${row['Snippets/Photos from the Field (Only Two) \nSnippet-1/Image-1\n\nPlease rename the file to look like this \n*firstname*_*lastname*_1.jpg\n'] ? `
+                <img class="project-image" src="${fixImg(row['Snippets/Photos from the Field (Only Two) \nSnippet-1/Image-1\n\nPlease rename the file to look like this \n*firstname*_*lastname*_1.jpg\n'])}">
+                <p class="caption">${row['Snippet-1, Caption-1 (40 WORDS)\nInsert the caption for the first image you uploaded'] || ''}</p>
+            ` : ''}
+
+            ${row['Snippets/Photos from the Field (Only Two) \nSnippet-2/Image-2\n\nPlease rename the file to look like this \n*firstname*_*lastname*_2.jpg\n'] ? `
+                <img class="project-image" src="${fixImg(row['Snippets/Photos from the Field (Only Two) \nSnippet-2/Image-2\n\nPlease rename the file to look like this \n*firstname*_*lastname*_2.jpg\n'])}">
+                <p class="caption">${row['Snippet-2, Caption-2 (40 WORDS)\nInsert the caption for the second image you uploaded'] || ''}</p>
+            ` : ''}
+        `;
+    }
+
+    function initFilters() {
+        const states = [...new Set(allData.map(r => r._derivedState))].sort();
+        const themes = [...new Set(allData.map(r => r._theme))].sort();
+        
+        const stateSel = document.getElementById('stateFilter');
+        const themeSel = document.getElementById('themeFilter');
+
+        states.forEach(s => stateSel.innerHTML += `<option value="${s}">${s}</option>`);
+        themes.forEach(t => themeSel.innerHTML += `<option value="${t}">${t}</option>`);
+
+        stateSel.onchange = applyFilters;
+        themeSel.onchange = applyFilters;
+    }
+
+    function applyFilters() {
+        const state = document.getElementById('stateFilter').value;
+        const theme = document.getElementById('themeFilter').value;
+        
+        const filtered = allData.filter(r => {
+            return (state === '' || r._derivedState === state) && 
+                   (theme === '' || r._theme === theme);
+        });
+        renderMap(filtered);
+    }
+
+    function resetFilters() {
+        document.getElementById('stateFilter').value = '';
+        document.getElementById('themeFilter').value = '';
